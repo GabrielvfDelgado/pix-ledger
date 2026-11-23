@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PixLedger</title>
+  <meta name="theme-color" content="#0a120e">
+  <style>
+    :root {
+      --bg: #0a120e; --painel: #111c17; --painel2: #18271f; --linha: #263a30;
+      --creme: #eef4ec; --suave: #8fa397; --texto: #c9d6cd; --verde: #4fe08a;
+      --menta: #b6f5cf; --areia: #e6dca0; --erro: #ff8f80; --escuro: #06140d;
+      --mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+      --sans: Inter, "Segoe UI", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--bg); }
+    body { min-height: 100vh; margin: 0; background: var(--bg); color: var(--texto); font-family: var(--sans); }
+    button { font: inherit; color: inherit; cursor: pointer; }
+    .pagina { width: min(1220px, 100%); margin: 0 auto; padding: 22px 24px 28px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+    .marca { display: flex; align-items: baseline; gap: 12px; }
+    h1 { margin: 0; font: 700 25px var(--mono); letter-spacing: -.04em; color: var(--creme); }
+    h1 i { font-style: normal; color: var(--verde); }
+    .marca span { font: 12px var(--mono); color: var(--suave); }
+    .fantasma { padding: 8px 14px; border: 1px solid var(--linha); border-radius: 8px; background: transparent; font-size: 13px; }
+    .fantasma:hover { border-color: var(--verde); color: var(--creme); }
+    .saldos { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+    .saldo { min-width: 0; padding: 15px 17px; border: 1px solid var(--linha); border-radius: 12px; background: var(--painel); }
+    .saldo small { display: block; margin-bottom: 7px; font: 11px var(--mono); letter-spacing: .08em; color: var(--suave); }
+    .saldo strong { display: block; overflow-wrap: anywhere; font: 600 clamp(21px, 2.5vw, 31px) var(--mono); letter-spacing: -.04em; color: var(--creme); transition: color .25s; }
+    .saldo.mudou strong { color: var(--verde); }
+    .saldo.total { border-color: #2f7a52; background: #102218; }
+    .saldo.total strong { color: var(--verde); }
+    .saldo.total.erro strong { color: var(--erro); }
+    .grade { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 14px; }
+    section { min-width: 0; border: 1px solid var(--linha); border-radius: 12px; background: var(--painel); }
+    h2 { margin: 0; padding: 13px 16px; border-bottom: 1px solid var(--linha); font: 11px var(--mono); letter-spacing: .08em; color: var(--suave); }
+    .cenarios { display: grid; gap: 7px; padding: 10px; }
+    .cenario { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 50px; padding: 8px 13px; border: 1px solid var(--linha); border-radius: 8px; background: var(--painel2); text-align: left; font-size: 14px; font-weight: 600; color: var(--creme); transition: border-color .15s, transform .1s; }
+    .cenario small { flex: none; font: 11.5px var(--mono); font-weight: 400; color: var(--suave); }
+    .cenario:hover:not(:disabled) { border-color: var(--verde); }
+    .cenario:active:not(:disabled) { transform: scale(.985); }
+    .cenario:disabled { cursor: wait; opacity: .5; }
+    button:focus-visible { outline: 2px solid var(--verde); outline-offset: 2px; }
+    #feed { display: flex; flex-direction: column; height: 402px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+    #feed:empty::after { content: "Escolha um cenário"; margin: auto; font-size: 14px; color: var(--suave); }
+    .item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 11px 16px; border-bottom: 1px solid #1e2f27; animation: entrar .22s ease-out; }
+    .item b { display: block; overflow: hidden; font-size: 14px; font-weight: 600; color: var(--creme); text-overflow: ellipsis; white-space: nowrap; }
+    .item span.detalhe { display: block; overflow: hidden; margin-top: 2px; font-size: 12px; color: var(--suave); text-overflow: ellipsis; white-space: nowrap; }
+    .valor { font: 14px var(--mono); color: var(--texto); }
+    .status { min-width: 96px; padding: 5px 9px; border-radius: 999px; text-align: center; font: 600 11px var(--mono); }
+    .PENDING { background: #3b3820; color: var(--areia); }
+    .SETTLED, .INFO { background: #123d27; color: var(--verde); }
+    .FAILED, .BLOCKED { background: #43211d; color: var(--erro); }
+    @keyframes entrar { from { opacity: 0; transform: translateY(-5px); } }
+    @media (max-width: 860px) {
+      .pagina { padding: 16px; }
+      .marca span { display: none; }
+      .saldos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grade { grid-template-columns: minmax(0, 1fr); }
+      #feed { height: 340px; }
+      .item { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; }
+      .valor { grid-row: 2; }
+      .status { grid-column: 2; grid-row: 1 / 3; min-width: 86px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+  </style>
+</head>
+<body data-pendentes="0">
+  <div class="pagina">
+    <header>
+      <div class="marca"><h1>pix<i>.</i>ledger</h1><span>Pix simulado</span></div>
+      <button id="reiniciar" class="fantasma" type="button">Reiniciar</button>
+    </header>
+
+    <main>
+      <div class="saldos" aria-live="polite">
+        <div class="saldo" id="c-ana"><small>ANA</small><strong id="ana">—</strong></div>
+        <div class="saldo" id="c-bia"><small>BIA</small><strong id="bia">—</strong></div>
+        <div class="saldo" id="c-transito"><small>EM TRÂNSITO</small><strong id="transito">—</strong></div>
+        <div class="saldo total" id="c-total"><small>TOTAL</small><strong id="total">—</strong></div>
+      </div>
+
+      <div class="grade">
+        <section aria-labelledby="t-cenarios">
+          <h2 id="t-cenarios">CENÁRIOS</h2>
+          <div class="cenarios">
+            <button class="cenario" type="button" data-cenario="aprovado">Pix aprovado <small>R$ 10,00</small></button>
+            <button class="cenario" type="button" data-cenario="repetido">Pedido repetido <small>5x</small></button>
+            <button class="cenario" type="button" data-cenario="corrida">Pix simultâneos <small>10x</small></button>
+            <button class="cenario" type="button" data-cenario="instavel">Banco instável <small>retry</small></button>
+            <button class="cenario" type="button" data-cenario="recusado">Banco recusa <small>estorno</small></button>
+            <button class="cenario" type="button" data-cenario="fora">Banco fora do ar <small>estorno</small></button>
+          </div>
+        </section>
+        <section aria-labelledby="t-feed">
+          <h2 id="t-feed">TRANSFERÊNCIAS</h2>
+          <ol id="feed" aria-live="polite"></ol>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      var API = '/api/v1';
+      var ROTULOS = { PENDING: 'RESERVADO', SETTLED: 'LIQUIDADO', FAILED: 'ESTORNADO', BLOCKED: 'BLOQUEADO', INFO: 'OK' };
+      var reais = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+      var $ = function (id) { return document.getElementById(id); };
+      var botoes = Array.prototype.slice.call(document.querySelectorAll('.cenario'));
+      var estado = null;
+      var sessao = 0;
+      var timer = null;
+
+      function uuid() {
+        if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+        return 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, function () {
+          return (Math.random() * 16 | 0).toString(16);
+        });
+      }
+
+      function centavos(valor) { return Math.round(Number(valor) * 100); }
+      function dinheiro(c) { return reais.format(c / 100); }
+      function decimal(c) { return (c / 100).toFixed(2); }
+
+      async function chamar(metodo, caminho, corpo, chave) {
+        var cabecalhos = { 'Content-Type': 'application/json' };
+        if (chave) cabecalhos['Idempotency-Key'] = chave;
+        var resposta = await fetch(API + caminho, {
+          method: metodo,
+          headers: cabecalhos,
+          body: corpo ? JSON.stringify(corpo) : undefined
+        });
+        var dados = await resposta.json().catch(function () { return {}; });
+        return { ok: resposta.ok, status: resposta.status, dados: dados, repetido: resposta.headers.get('Idempotent-Replayed') === 'true' };
+      }
+
+      async function exigir(promessa) {
+        var r = await promessa;
+        if (!r.ok) throw new Error(r.dados.message || 'Falha na API');
+        return r.dados;
+      }
+
+      async function iniciar() {
+        var atual = ++sessao;
+        clearTimeout(timer);
+        travar(true);
+        $('feed').textContent = '';
+        document.body.dataset.pendentes = '0';
+        try {
+          var ana = await exigir(chamar('POST', '/accounts', { holderName: 'Ana Souza' }));
+          var bia = await exigir(chamar('POST', '/accounts', { holderName: 'Bia Lima' }));
+          var email = 'bia-' + uuid() + '@example.com';
+          await exigir(chamar('POST', '/accounts/' + bia.id + '/pix-keys', { type: 'EMAIL', value: email }));
+          await exigir(chamar('POST', '/accounts/' + ana.id + '/deposits', { amount: '100.00' }, uuid()));
+          if (atual !== sessao) return;
+          estado = { ana: ana.id, bia: bia.id, email: email, itens: {}, saldoAna: 10000, saldoBia: 0 };
+          await atualizar();
+        } catch (e) {
+          adicionar('Não foi possível iniciar', e.message, null, 'BLOCKED');
+        }
+        if (atual === sessao) travar(false);
+      }
+
+      function travar(valor) { botoes.forEach(function (b) { b.disabled = valor; }); }
+
+      function pendentes() {
+        return Object.keys(estado.itens).map(function (id) { return estado.itens[id]; })
+          .filter(function (i) { return i.status === 'PENDING'; });
+      }
+
+      function mostrar(id, cartao, texto) {
+        if ($(id).textContent !== texto) {
+          var c = $(cartao);
+          if ($(id).textContent !== '—') {
+            c.classList.add('mudou');
+            setTimeout(function () { c.classList.remove('mudou'); }, 500);
+          }
+          $(id).textContent = texto;
+        }
+      }
+
+      async function atualizar() {
+        if (!estado) return;
+        var atual = sessao;
+        var lista = pendentes();
+        await Promise.all(lista.map(async function (item) {
+          var r = await chamar('GET', '/transfers/' + item.id);
+          if (r.ok) definirStatus(item, r.dados);
+        }));
+        var saldos = await Promise.all([
+          chamar('GET', '/accounts/' + estado.ana + '/balance'),
+          chamar('GET', '/accounts/' + estado.bia + '/balance')
+        ]);
+        if (atual !== sessao) return;
+        if (saldos[0].ok && saldos[1].ok) {
+          // Lê o que segue pendente depois dos saldos, para o total não piscar durante a liquidação.
+          var aberto = pendentes();
+          await Promise.all(aberto.map(async function (item) {
+            var r = await chamar('GET', '/transfers/' + item.id);
+            if (r.ok && r.dados.status !== 'PENDING') item.mudouDepois = r.dados;
+          }));
+          if (atual !== sessao) return;
+          var estavel = aberto.every(function (i) { return !i.mudouDepois; });
+          aberto.forEach(function (i) { if (i.mudouDepois) { definirStatus(i, i.mudouDepois); delete i.mudouDepois; } });
+          if (estavel) pintar(centavos(saldos[0].dados.balance), centavos(saldos[1].dados.balance));
+        }
+        document.body.dataset.pendentes = String(pendentes().length);
+        clearTimeout(timer);
+        if (pendentes().length) timer = setTimeout(atualizar, 220);
+      }
+
+      function pintar(ana, bia) {
+        var transito = pendentes().reduce(function (s, i) { return s + i.centavos; }, 0);
+        var total = ana + bia + transito;
+        estado.saldoAna = ana;
+        estado.saldoBia = bia;
+        mostrar('ana', 'c-ana', dinheiro(ana));
+        mostrar('bia', 'c-bia', dinheiro(bia));
+        mostrar('transito', 'c-transito', dinheiro(transito));
+        mostrar('total', 'c-total', dinheiro(total));
+        $('c-total').classList.toggle('erro', total !== 10000);
+      }
+
+      function adicionar(titulo, detalhe, valor, status) {
+        var li = document.createElement('li');
+        li.className = 'item';
+        var texto = document.createElement('div');
+        var b = document.createElement('b');
+        b.textContent = titulo;
+        var d = document.createElement('span');
+        d.className = 'detalhe';
+        d.textContent = detalhe || '';
+        texto.appendChild(b);
+        texto.appendChild(d);
+        var v = document.createElement('span');
+        v.className = 'valor';
+        v.textContent = valor === null ? '' : dinheiro(valor);
+        var s = document.createElement('span');
+        s.className = 'status ' + status;
+        s.textContent = ROTULOS[status];
+        li.appendChild(texto);
+        li.appendChild(v);
+        li.appendChild(s);
+        $('feed').insertBefore(li, $('feed').firstChild);
+        return { detalhe: d, status: s };
+      }
+
+      function definirStatus(item, transferencia) {
+        if (item.status === transferencia.status) return;
+        item.status = transferencia.status;
+        item.ui.status.className = 'status ' + item.status;
+        item.ui.status.textContent = ROTULOS[item.status];
+        if (transferencia.failureReason) item.ui.detalhe.textContent = transferencia.failureReason;
+        else if (item.status === 'SETTLED') item.ui.detalhe.textContent = item.final;
+      }
+
+      function transferir(c, chave) {
+        return chamar('POST', '/transfers', {
+          payerAccountId: estado.ana,
+          pixKeyType: 'EMAIL',
+          pixKey: estado.email,
+          amount: decimal(c)
+        }, chave || uuid());
+      }
+
+      function acompanhar(transferencia, titulo, detalhe, final) {
+        var c = centavos(transferencia.amount);
+        var item = { id: transferencia.id, centavos: c, status: 'PENDING', final: final || 'Entregue para Bia' };
+        item.ui = adicionar(titulo, detalhe, c, 'PENDING');
+        estado.itens[item.id] = item;
+        definirStatus(item, transferencia);
+      }
+
+      async function simples(c, titulo, detalhe) {
+        var r = await transferir(c);
+        if (r.ok) acompanhar(r.dados, titulo, detalhe);
+        else adicionar(titulo, r.dados.message || 'Pedido recusado', c, 'BLOCKED');
+      }
+
+      var cenarios = {
+        aprovado: function () { return simples(1000, 'Pix aprovado', 'Aguardando o banco'); },
+        instavel: function () { return simples(1098, 'Banco instável', 'Tentando novamente'); },
+        recusado: function () { return simples(1013, 'Banco recusa', 'Aguardando o banco'); },
+        fora: function () { return simples(1099, 'Banco fora do ar', 'Tentando novamente'); },
+        repetido: async function () {
+          var chave = uuid();
+          var pedidos = [];
+          for (var i = 0; i < 5; i++) pedidos.push(transferir(700, chave));
+          var respostas = await Promise.all(pedidos);
+          var ok = respostas.filter(function (r) { return r.ok; });
+          if (!ok.length) {
+            adicionar('Pedido repetido', respostas[0].dados.message || 'Pedido recusado', 700, 'BLOCKED');
+            return;
+          }
+          acompanhar(ok[0].dados, 'Pedido repetido', '5 pedidos, 1 cobrança', '5 pedidos, 1 cobrança');
+        },
+        corrida: async function () {
+          var cada = Math.max(100, Math.floor(estado.saldoAna / 400) * 100);
+          var pedidos = [];
+          for (var i = 0; i < 10; i++) pedidos.push(transferir(cada));
+          var respostas = await Promise.all(pedidos);
+          var aprovados = respostas.filter(function (r) { return r.ok; });
+          aprovados.forEach(function (r, n) {
+            acompanhar(r.dados, 'Pix simultâneo ' + (n + 1), 'Aguardando o banco');
+          });
+          var bloqueados = respostas.length - aprovados.length;
+          if (bloqueados) adicionar(bloqueados + ' Pix bloqueados', 'Saldo insuficiente', cada * bloqueados, 'BLOCKED');
+        }
+      };
+
+      botoes.forEach(function (botao) {
+        botao.addEventListener('click', async function () {
+          if (!estado) return;
+          travar(true);
+          try {
+            await cenarios[botao.dataset.cenario]();
+            await atualizar();
+          } catch (e) {
+            adicionar('Falha na demonstração', e.message, null, 'BLOCKED');
+          }
+          travar(false);
+        });
+      });
+
+      $('reiniciar').addEventListener('click', iniciar);
+      iniciar();
+    })();
+  </script>
+</body>
+</html>

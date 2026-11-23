@@ -1,0 +1,68 @@
+spring:
+  application:
+    name: pix-ledger
+  config:
+    import: optional:file:.env[.properties]
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:${DB_PORT:5433}/pix_ledger}
+    username: ${DB_USERNAME:pix_ledger}
+    password: ${DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: 20
+  flyway:
+    enabled: true
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    timeout: 250ms
+  data:
+    redis:
+      repositories:
+        enabled: false
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:pix_ledger}
+    password: ${RABBITMQ_PASSWORD:}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: never
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+  health:
+    # Redis é cache e o RabbitMQ tem a outbox: a API continua saudável sem eles.
+    redis:
+      enabled: false
+    rabbit:
+      enabled: false
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+pixledger:
+  messaging:
+    enabled: true
+  outbox:
+    poll-ms: 500
+  retry:
+    max-attempts: 4
+    initial-interval-ms: 500
+    multiplier: 2.0
+    max-interval-ms: 4000
+  bank:
+    latency-ms: 300
